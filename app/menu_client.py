@@ -1,13 +1,28 @@
-import httpx
-from app.config import MENU_API_URL, MENU_API_KEY
+import csv
 from app.models import Product
 
+MENU_CSV_PATH = "menu.csv"
 
 async def fetch_live_menu() -> list[Product]:
-    headers = {"Authorization": f"Bearer {MENU_API_KEY}"}
+    products = []
 
-    async with httpx.AsyncClient(timeout=5) as client:
-        response = await client.get(MENU_API_URL, headers=headers)
-        response.raise_for_status()
+    with open(MENU_CSV_PATH, newline="", encoding="utf-8") as csvfile:
+        reader = csv.DictReader(csvfile)
 
-    return [Product(**p) for p in response.json() if p.get("available")]
+        for row in reader:
+            if row["available"].lower() != "true":
+                continue
+
+            products.append(
+                Product(
+                    product_id=row["product_id"],
+                    name=row["name"],
+                    category=row["category"],
+                    price=float(row["price"]),
+                    available=True,
+                    tags=[t.strip() for t in row["tags"].split(",")],
+                    margin_score=float(row["margin_score"]),
+                )
+            )
+
+    return products
